@@ -1,60 +1,57 @@
-const express= require ('express');
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
+const PORT = 5000;
 
-app.use(express.json())
+app.use(cors()); // Enable CORS
+app.use(express.json());
 
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/todoDB", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => console.log('MongoDB connected'))
+  .catch(err => console.log('MongoDB connection error:', err));
 
-//variabla qe ka mi majt tasks
-let todos = [];
+// Define Todo Schema and Model
+const todoSchema = new mongoose.Schema({
+    text: String,
+    completed: { type: Boolean, default: false }
+});
 
-//GET method
+const Todo = mongoose.model('Todo', todoSchema);
 
-app.get('/todos', (req,res)=>{
+// GET method
+app.get('/todos', async (req, res) => {
+    const todos = await Todo.find();
     res.json(todos);
 });
 
-//Post method
-
-app.post('/todos', (req,res)=>{
-    const newTodo = {id: Date.now(), text: req.body.text, completed : false};
-    todos.push(newTodo);
+// POST method
+app.post('/todos', async (req, res) => {
+    const newTodo = new Todo({
+        text: req.body.text
+    });
+    await newTodo.save();
     res.json(newTodo);
 });
 
-//update method
-
-app.put('/todos/:id', (req,res)=>{
-    //nese id sesht njejt me at qe o shenu boom error
-    //nese kushti osth true i bon te dhanat update
-
-    todos= todos.map(todo => todo.id != req.params.id ? {...todo,...req.body}:todo);
-    res.json({message:"Task updated"})
+// PUT method (update)
+app.put('/todos/:id', async (req, res) => {
+    const updatedTodo = await Todo.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ message: "Task updated", todo: updatedTodo });
 });
 
-app.put('/todos/:id', (req, res) => {
-
-    todos = todos.map(todo => 
-        todo.id !== id ? todo : { ...todo, ...req.body } // Only update the task if the id matches
-    );
-    
-    res.json({ message: "Task updated" });
-});
-
-
-//delete method
-
-
-app.delete('/todos/:id', (req, res) => {
-    const id = req.params.id;  // Correct way to extract the id
-    todos = todos.filter(todo => todo.id != id);  // Remove task with that id
+// DELETE method
+app.delete('/todos/:id', async (req, res) => {
+    await Todo.findByIdAndDelete(req.params.id);
     res.json({ message: "Task Deleted" });
 });
 
-
 app.listen(PORT, () => {
-    console.log(`http://localhost:${PORT}/todos`);
-  });
+    console.log(`Server is running at http://localhost:${PORT}/todos`);
+});
 
-  module.exports = app;
+module.exports = app;

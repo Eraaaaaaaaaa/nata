@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        input {
+            width: calc(100% - 50px);
+            padding: 10px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Todo List</h2>
+        <input type="text" id="todoInput" placeholder="Add a new task">
+        <button onclick="addTodo()">Add</button>
+        <ul id="todoList"></ul>
+    </div>
+
+    <script>
+        async function fetchTodos() {
+            const response = await fetch('http://localhost:5000/todos');
+            const todos = await response.json();
+            const todoList = document.getElementById('todoList');
+            todoList.innerHTML = '';
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${todo.text}</span>
+                    <button onclick="deleteTodo('${todo._id}')">Delete</button>
+                    <button onclick="toggleCompletion('${todo._id}', ${todo.completed})">
+                        ${todo.completed ? 'Undo' : 'Complete'}
+                    </button>
+                `;
+                todoList.appendChild(li);
+            });
+        }
+
+        async function addTodo() {
+            const todoInput = document.getElementById('todoInput');
+            const newTodo = { text: todoInput.value };
+            await fetch('http://localhost:5000/todos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newTodo)
+            });
+            todoInput.value = '';
+            fetchTodos();
+        }
+
+        async function deleteTodo(id) {
+            await fetch(`http://localhost:5000/todos/${id}`, { method: 'DELETE' });
+            fetchTodos();
+        }
+
+        async function toggleCompletion(id, completed) {
+            await fetch(`http://localhost:5000/todos/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ completed: !completed })
+            });
+            fetchTodos();
+        }
+
+        // Fetch todos on page load
+        fetchTodos();
+    </script>
+</body>
+</html>
